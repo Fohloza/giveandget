@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StaffCycle - Office Item Recycling</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: The application is a Single-Page App (SPA) using a view-swapping mechanism managed by vanilla JavaScript. Key views include: Auth, Browse, Post Item, My Items, and Item Details. This structure was chosen to separate the core user tasks (finding items vs. managing your own) into distinct, uncluttered interfaces, providing a focused and intuitive workflow. Navigation is handled via a persistent header after login, allowing users to easily move between primary functions without page reloads. This task-oriented design directly reflects the user goals identified in the source outline. -->
+    <!-- Visualization & Content Choices: 
+        - Report Info: Item listings -> Goal: Inform/Browse -> Method: Interactive Card Grid -> Interaction: Click card to see details, filter by category -> Justification: A visual grid is efficient for scanning many items. Filtering helps users narrow down choices quickly.
+        - Report Info: Item Categories -> Goal: Inform (High-Level) -> Method: Doughnut Chart (Chart.js) -> Interaction: Hover for tooltips -> Justification: The outline implies data categorization. A chart provides a quick, high-level summary of the item distribution, fulfilling the prompt's data visualization requirement even though the source is not a data report.
+        - Report Info: Offer process -> Goal: Organize/Action -> Method: Styled list of offers with action buttons -> Interaction: Click to accept/reject -> Justification: A clear list format with distinct buttons simplifies the decision-making process for the item giver.
+        - Report Info: Posting an item -> Goal: Action/Input -> Method: Multi-field HTML Form -> Interaction: User input, submission -> Justification: A standard form is the most effective and universally understood method for data entry.
+        Library/Method: Tailwind for layout/styling, Chart.js for visualization, Vanilla JS for all state management and DOM manipulation. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        .view { display: none; }
+        .view.active { display: block; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 450px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-stone-800">
+
+    <header id="app-header" class="bg-white/80 backdrop-blur-lg sticky top-0 z-40 shadow-sm hidden">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex-shrink-0">
+                    <a href="#" class="text-2xl font-bold text-teal-700">StaffCycle</a>
+                </div>
+                <div class="hidden md:block">
+                    <div class="ml-10 flex items-baseline space-x-4">
+                        <button data-nav="browse" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 px-3 py-2 rounded-md text-sm font-medium">Browse</button>
+                        <button data-nav="post" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 px-3 py-2 rounded-md text-sm font-medium">Post Item</button>
+                        <button data-nav="my-items" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 px-3 py-2 rounded-md text-sm font-medium">My Items</button>
+                        <button data-nav="my-offers" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 px-3 py-2 rounded-md text-sm font-medium">My Offers</button>
+                        <button data-nav="dashboard" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 px-3 py-2 rounded-md text-sm font-medium">Dashboard</button>
+                    </div>
+                </div>
+                <div class="hidden md:block">
+                    <button id="signout-button" class="bg-rose-500 text-white hover:bg-rose-600 px-4 py-2 rounded-md text-sm font-medium transition-colors">Sign Out</button>
+                </div>
+                <div class="-mr-2 flex md:hidden">
+                    <button id="mobile-menu-button" type="button" class="bg-stone-100 inline-flex items-center justify-center p-2 rounded-md text-stone-500 hover:text-teal-700 hover:bg-stone-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-stone-100 focus:ring-teal-500" aria-controls="mobile-menu" aria-expanded="false">
+                        <span class="sr-only">Open main menu</span>
+                        <span class="block h-6 w-6">☰</span>
+                    </button>
+                </div>
+            </div>
+        </nav>
+        <div class="md:hidden hidden" id="mobile-menu">
+            <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3">
+                <button data-nav="browse" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Browse</button>
+                <button data-nav="post" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Post Item</button>
+                <button data-nav="my-items" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 block px-3 py-2 rounded-md text-base font-medium w-full text-left">My Items</button>
+                <button data-nav="my-offers" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 block px-3 py-2 rounded-md text-base font-medium w-full text-left">My Offers</button>
+                <button data-nav="dashboard" class="nav-link text-stone-600 hover:bg-teal-50 hover:text-teal-700 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Dashboard</button>
+                <button id="signout-button-mobile" class="bg-rose-500 text-white hover:bg-rose-600 block px-3 py-2 rounded-md text-base font-medium w-full text-left">Sign Out</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="auth-view" class="view active">
+            <div class="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-stone-100">
+                <div class="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg">
+                    <div>
+                        <h1 class="text-center text-4xl font-extrabold text-teal-700">StaffCycle</h1>
+                        <h2 class="mt-4 text-center text-xl font-bold tracking-tight text-stone-900">Sign in to your account</h2>
+                        <p class="mt-2 text-center text-sm text-stone-600">
+                            Or <button id="show-register-button" class="font-medium text-teal-600 hover:text-teal-500">create a new account</button>
+                        </p>
+                    </div>
+                    <form id="login-form" class="mt-8 space-y-6">
+                        <div class="rounded-md shadow-sm -space-y-px">
+                            <div><input id="login-email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-stone-300 placeholder-stone-500 text-stone-900 rounded-t-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" placeholder="Email address"></div>
+                            <div><input id="login-password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-stone-300 placeholder-stone-500 text-stone-900 rounded-b-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" placeholder="Password"></div>
+                        </div>
+                        <div><button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">Sign in</button></div>
+                    </form>
+                    <form id="register-form" class="mt-8 space-y-6 hidden">
+                         <div class="rounded-md shadow-sm -space-y-px">
+                            <div><input id="register-email" type="email" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-stone-300 placeholder-stone-500 text-stone-900 rounded-t-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" placeholder="Email address"></div>
+                            <div><input id="register-password" type="password" required class="appearance-none rounded-none relative block w-full px-3 py-2 border border-stone-300 placeholder-stone-500 text-stone-900 rounded-b-md focus:outline-none focus:ring-teal-500 focus:border-teal-500" placeholder="Password"></div>
+                        </div>
+                        <div><button type="submit" class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">Register</button></div>
+                    </form>
+                    <p class="text-center text-sm text-stone-500"><button id="show-login-button" class="font-medium text-teal-600 hover:text-teal-500 hidden">Already have an account? Sign In</button></p>
+                    <div id="auth-message" class="text-center text-sm text-rose-600"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="browse-view" class="view">
+            <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">Browse Available Items</h2>
+                    <p class="mt-3 max-w-2xl mx-auto text-lg text-stone-600 sm:mt-4">
+                        Here you can find all items currently being offered by your colleagues. Use the filters to narrow your search and click on any item to see more details or make an offer.
+                    </p>
+                </div>
+                <div class="flex flex-col md:flex-row gap-4 mb-8 sticky top-20 bg-stone-50/90 backdrop-blur-sm py-4 z-30">
+                    <input type="text" id="search-input" placeholder="Search by description or location..." class="flex-grow p-3 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500">
+                    <select id="category-filter" class="p-3 border border-stone-300 rounded-md shadow-sm focus:outline-none focus:ring-teal-500 focus:border-teal-500">
+                        <option value="All">All Categories</option>
+                        <option value="Desk">Desk</option>
+                        <option value="Chair">Chair</option>
+                        <option value="Monitor">Monitor</option>
+                        <option value="Table">Table</option>
+                        <option value="Cabinet">Cabinet</option>
+                        <option value="Other Office Equipment">Other Office Equipment</option>
+                        <option value="Household Items">Household Items</option>
+                    </select>
+                </div>
+                <div id="items-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+                </div>
+                 <div id="no-items-message" class="hidden text-center py-16">
+                    <h3 class="text-xl font-semibold text-stone-700">No items found</h3>
+                    <p class="text-stone-500 mt-2">Try adjusting your search or filters.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="item-details-view" class="view">
+            <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <button data-nav="browse" class="mb-6 flex items-center text-teal-600 hover:text-teal-800 transition duration-300 font-medium">
+                    ← Back to Browse
+                </button>
+                <div id="item-detail-content" class="bg-white rounded-lg shadow-xl p-6 md:p-8 flex flex-col lg:flex-row gap-8">
+                </div>
+            </div>
+        </div>
+        
+        <div id="post-item-view" class="view">
+            <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div class="max-w-2xl mx-auto bg-white p-8 rounded-xl shadow-lg">
+                    <div class="text-center mb-8">
+                        <h2 class="text-3xl font-bold tracking-tight text-stone-900">Give Away an Item</h2>
+                        <p class="mt-3 max-w-2xl mx-auto text-lg text-stone-600">
+                            Fill out the form below to list an item for your colleagues to claim. Clear descriptions and a photo help others understand what you're offering.
+                        </p>
+                    </div>
+                    <form id="post-item-form" class="space-y-6">
+                        <div>
+                            <label for="item-description" class="block text-sm font-medium text-stone-700">Description</label>
+                            <textarea id="item-description" required rows="3" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"></textarea>
+                        </div>
+                        <div>
+                            <label for="item-image" class="block text-sm font-medium text-stone-700">Image Upload</label>
+                            <input type="file" id="item-image" accept="image/*" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-teal-50 file:text-teal-700 hover:file:bg-teal-100">
+                        </div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label for="item-category" class="block text-sm font-medium text-stone-700">Category</label>
+                                <select id="item-category" required class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 py-2">
+                                    <option>Desk</option>
+                                    <option>Chair</option>
+                                    <option>Monitor</option>
+                                    <option>Table</option>
+                                    <option>Cabinet</option>
+                                    <option>Other Office Equipment</option>
+                                    <option>Household Items</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label for="item-location" class="block text-sm font-medium text-stone-700">Location / Department</label>
+                                <input type="text" id="item-location" required class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                            </div>
+                        </div>
+                        <div>
+                            <label for="item-condition" class="block text-sm font-medium text-stone-700">Condition (Optional)</label>
+                            <input type="text" id="item-condition" class="mt-1 block w-full rounded-md border-stone-300 shadow-sm focus:border-teal-500 focus:ring-teal-500">
+                        </div>
+                        <div class="pt-4">
+                            <button type="submit" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500">Post Item</button>
+                        </div>
+                         <div id="post-message" class="text-center text-sm"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div id="my-items-view" class="view">
+             <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">My Posted Items</h2>
+                    <p class="mt-3 max-w-2xl mx-auto text-lg text-stone-600">
+                        Manage the items you have listed. You can update their status or review offers made by others.
+                    </p>
+                </div>
+                <div id="my-items-list" class="space-y-8">
+                </div>
+                 <div id="no-my-items-message" class="hidden text-center py-16">
+                    <h3 class="text-xl font-semibold text-stone-700">You haven't posted any items yet</h3>
+                    <p class="text-stone-500 mt-2">Click the "Post Item" button to get started.</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="my-offers-view" class="view">
+             <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">My Offers</h2>
+                     <p class="mt-3 max-w-2xl mx-auto text-lg text-stone-600">
+                        This section shows the status of all the offers you have made on items listed by your colleagues.
+                    </p>
+                </div>
+                <div id="my-offers-list" class="space-y-4 max-w-4xl mx-auto">
+                </div>
+                 <div id="no-my-offers-message" class="hidden text-center py-16">
+                    <h3 class="text-xl font-semibold text-stone-700">You haven't made any offers yet</h3>
+                    <p class="text-stone-500 mt-2">Browse items and make an offer to see it here.</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="dashboard-view" class="view">
+             <div class="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-8">
+                    <h2 class="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl">Platform Dashboard</h2>
+                     <p class="mt-3 max-w-2xl mx-auto text-lg text-stone-600">
+                        This dashboard provides a high-level overview of the items available on the StaffCycle platform. The chart below shows the distribution of items by category.
+                    </p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-lg max-w-3xl mx-auto">
+                    <h3 class="text-lg font-medium leading-6 text-stone-900 text-center mb-4">Items by Category</h3>
+                    <div class="chart-container">
+                        <canvas id="itemsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="toast-notification" class="fixed bottom-5 right-5 bg-teal-600 text-white py-3 px-5 rounded-lg shadow-xl transition-transform translate-x-full duration-500">
+            <p id="toast-message"></p>
+        </div>
+
+    </main>
+    
+    <script type="module">
+        // Firebase SDK Imports (ensure these versions are compatible or use latest)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-app.js";
+        import { getAuth, signInWithCustomToken, signInAnonymously, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-auth.js";
+        import { getFirestore, collection, addDoc, getDocs, doc, query, where, onSnapshot, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.6.0/firebase-storage.js";
+
+        // IMPORTANT: Firebase Security Rules Required!
+        // Ensure these rules are set in your Firebase project's console for Firestore and Storage.
+        // Firestore Rules:
+        /*
+        rules_version = '2';
+        service cloud.firestore {
+          match /databases/{database}/documents {
+            match /artifacts/{appId}/public/data/{collectionName}/{documentId} {
+              allow read, write: if request.auth != null;
+            }
+          }
+        }
+        */
+        // Storage Rules:
+        /*
+        rules_version = '2';
+        service firebase.storage {
+          match /b/{bucket}/o {
+            match /item_images/{userId}/{fileName} {
+              allow read, write: if request.auth != null;
+            }
+          }
+        }
+        */
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const app = {
+                state: {
+                    currentUser: null,
+                    currentPage: 'auth',
+                    items: [], // Will be populated from Firestore
+                    users: [], // Used for mock data initially, will update with Firestore users.displayName
+                    offers: [], // Will be populated from Firestore
+                    db: null,
+                    auth: null,
+                    storage: null,
+                    appId: null, // Will be set from __app_id
+                },
+                
+                elements: {
+                    views: document.querySelectorAll('.view'),
+                    header: document.getElementById('app-header'),
+                    navLinks: document.querySelectorAll('.nav-link'),
+                    mobileMenuButton: document.getElementById('mobile-menu-button'),
+                    mobileMenu: document.getElementById('mobile-menu'),
+
+                    authView: document.getElementById('auth-view'),
+                    loginForm: document.getElementById('login-form'),
+                    registerForm: document.getElementById('register-form'),
+                    authMessage: document.getElementById('auth-message'),
+                    showRegisterBtn: document.getElementById('show-register-button'),
+                    showLoginBtn: document.getElementById('show-login-button'),
+                    signOutBtn: document.getElementById('signout-button'),
+                    signOutBtnMobile: document.getElementById('signout-button-mobile'),
+
+                    browseView: document.getElementById('browse-view'),
+                    itemsGrid: document.getElementById('items-grid'),
+                    noItemsMessage: document.getElementById('no-items-message'),
+                    searchInput: document.getElementById('search-input'),
+                    categoryFilter: document.getElementById('category-filter'),
+
+                    itemDetailsView: document.getElementById('item-details-view'),
+                    itemDetailContent: document.getElementById('item-detail-content'),
+                    
+                    postItemView: document.getElementById('post-item-view'),
+                    postItemForm: document.getElementById('post-item-form'),
+                    postMessage: document.getElementById('post-message'),
+
+                    myItemsView: document.getElementById('my-items-view'),
+                    myItemsList: document.getElementById('my-items-list'),
+                    noMyItemsMessage: document.getElementById('no-my-items-message'),
+                    
+                    myOffersView: document.getElementById('my-offers-view'),
+                    myOffersList: document.getElementById('my-offers-list'),
+                    noMyOffersMessage: document.getElementById('no-my-offers-message'),
+
+                    dashboardView: document.getElementById('dashboard-view'),
+                    itemsChartCanvas: document.getElementById('itemsChart'),
+                    
+                    toast: document.getElementById('toast-notification'),
+                    toastMessage: document.getElementById('toast-message'),
+                },
+                
+                async init() {
+                    try {
+                        this.state.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+                        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+                        const firebaseApp = initializeApp(firebaseConfig);
+                        this.state.db = getFirestore(firebaseApp);
+                        this.state.auth = getAuth(firebaseApp);
+                        this.state.storage = getStorage(firebaseApp);
+
+                        // Authenticate user
+                        onAuthStateChanged(this.state.auth, async (user) => {
+                            if (user) {
+                                this.state.currentUser = { uid: user.uid, email: user.email };
+                                this.elements.header.classList.remove('hidden');
+                                this.navigate('browse');
+                                this.setupRealtimeListeners();
+                            } else {
+                                this.state.currentUser = null;
+                                this.elements.header.classList.add('hidden');
+                                this.navigate('auth');
+                                // Attempt anonymous sign-in if no custom token
+                                if (!initialAuthToken) {
+                                    await signInAnonymously(this.state.auth);
+                                }
+                            }
+                        });
+
+                        if (initialAuthToken) {
+                            await signInWithCustomToken(this.state.auth, initialAuthToken);
+                        }
+
+                    } catch (error) {
+                        console.error("Firebase initialization error:", error);
+                        this.showToast(`Initialization failed: ${error.message}`);
+                        // Fallback to mock data or error display if Firebase fails to init
+                        this.mockData(); // Keep mock data for development/demo if Firebase fails
+                        this.addEventListeners();
+                        this.navigate('auth');
+                    }
+                    this.addEventListeners();
+                },
+
+                // Mock data is now a fallback/dev-only. Remove in production.
+                mockData() {
+                    console.log("Using mock data as Firebase not initialized or failed.");
+                    this.state.users = [
+                        { uid: 'user1mock', email: 'user@test.com' },
+                        { uid: 'giver1mock', email: 'giver@test.com' }
+                    ];
+                    this.state.items = [
+                        { id: 'mockitem1', userId: 'giver1mock', description: 'Ergonomic Office Chair', imageUrl: 'https://placehold.co/600x400/a7f3d0/134e4a?text=Chair', category: 'Chair', location: 'Floor 3, Marketing', condition: 'Like New', status: 'Available' },
+                        { id: 'mockitem2', userId: 'giver1mock', description: '27-inch 4K Monitor', imageUrl: 'https://placehold.co/600x400/bae6fd/0c4a6e?text=Monitor', category: 'Monitor', location: 'Floor 5, IT', condition: 'Good', status: 'Available' },
+                        { id: 'mockitem3', userId: 'giver1mock', description: 'Standing Desk Converter', imageUrl: 'https://placehold.co/600x400/fecaca/7f1d1d?text=Desk', category: 'Desk', location: 'Floor 2, HR', condition: 'Excellent', status: 'Pending' },
+                        { id: 'mockitem4', userId: 'user1mock', description: 'Filing Cabinet', imageUrl: 'https://placehold.co/600x400/e9d5ff/4a044e?text=Cabinet', category: 'Cabinet', location: 'Floor 1, Admin', condition: 'Fair', status: 'Given Away' },
+                        { id: 'mockitem5', userId: 'giver1mock', description: 'Large Conference Table', imageUrl: 'https://placehold.co/600x400/fed7aa/854d0e?text=Table', category: 'Table', location: 'Basement Storage', condition: 'Good', status: 'Available' }
+                    ];
+                    this.state.offers = [
+                        { id: 'mockoffer1', itemId: 'mockitem3', userId: 'user1mock', message: 'I would love to take this!', status: 'Accepted' },
+                        { id: 'mockoffer2', itemId: 'mockitem1', userId: 'user1mock', message: 'Is this still available?', status: 'Pending' }
+                    ];
+                },
+
+                setupRealtimeListeners() {
+                    if (!this.state.db || !this.state.currentUser) {
+                        console.warn("Firestore or current user not available for listeners.");
+                        return;
+                    }
+
+                    const itemsCollectionRef = collection(this.state.db, `artifacts/${this.state.appId}/public/data/items`);
+                    onSnapshot(itemsCollectionRef, (snapshot) => {
+                        this.state.items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        if (this.state.currentPage === 'browse') {
+                            this.renderBrowseView();
+                        } else if (this.state.currentPage === 'my-items') {
+                            this.renderMyItemsView();
+                        } else if (this.state.currentPage === 'dashboard') {
+                            this.renderDashboard();
+                        }
+                    }, (error) => {
+                        console.error("Error fetching items from Firestore:", error);
+                        this.showToast(`Error loading items: ${error.message}`);
+                    });
+
+                    // More complex: Listen to all offers across all items
+                    // For simplicity, offers are fetched specifically when needed or when item offers are rendered.
+                    // A truly global real-time offers list would require a top-level offers collection for efficient querying.
+                },
+
+                addEventListeners() {
+                    this.elements.loginForm.addEventListener('submit', async e => {
+                        e.preventDefault();
+                        const email = this.elements.loginForm.querySelector('#login-email').value;
+                        const password = this.elements.loginForm.querySelector('#login-password').value;
+                        await this.handleLogin(email, password);
+                    });
+                    this.elements.registerForm.addEventListener('submit', async e => {
+                        e.preventDefault();
+                        const email = this.elements.registerForm.querySelector('#register-email').value;
+                        const password = this.elements.registerForm.querySelector('#register-password').value;
+                        await this.handleRegister(email, password);
+                    });
+
+                    this.elements.showRegisterBtn.addEventListener('click', () => this.toggleAuthForms(true));
+                    this.elements.showLoginBtn.addEventListener('click', () => this.toggleAuthForms(false));
+                    
+                    this.elements.signOutBtn.addEventListener('click', async () => await this.handleSignOut());
+                    this.elements.signOutBtnMobile.addEventListener('click', async () => await this.handleSignOut());
+
+                    this.elements.navLinks.forEach(link => {
+                        link.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            this.navigate(e.target.dataset.nav);
+                            if(this.elements.mobileMenu.classList.contains('hidden') === false) {
+                                this.elements.mobileMenu.classList.add('hidden');
+                            }
+                        });
+                    });
+                    
+                    this.elements.mobileMenuButton.addEventListener('click', () => {
+                        this.elements.mobileMenu.classList.toggle('hidden');
+                    });
+
+                    this.elements.searchInput.addEventListener('input', () => this.renderBrowseView());
+                    this.elements.categoryFilter.addEventListener('change', () => this.renderBrowseView());
+                    
+                    this.elements.postItemForm.addEventListener('submit', async e => {
+                        e.preventDefault();
+                        await this.handlePostItem();
+                    });
+                },
+
+                navigate(page) {
+                    this.state.currentPage = page;
+                    this.elements.views.forEach(view => {
+                        view.classList.toggle('active', view.id === `${page}-view`);
+                    });
+
+                    document.querySelectorAll('.nav-link').forEach(link => {
+                        link.classList.toggle('bg-teal-100', link.dataset.nav === page);
+                        link.classList.toggle('text-teal-700', link.dataset.nav === page);
+                    });
+
+                    switch (page) {
+                        case 'browse': this.renderBrowseView(); break;
+                        case 'my-items': this.renderMyItemsView(); break;
+                        case 'my-offers': this.renderMyOffersView(); break;
+                        case 'dashboard': this.renderDashboard(); break;
+                    }
+                },
+                
+                showToast(message) {
+                    this.elements.toastMessage.textContent = message;
+                    this.elements.toast.classList.remove('translate-x-full');
+                    setTimeout(() => {
+                        this.elements.toast.classList.add('translate-x-full');
+                    }, 3000);
+                },
+
+                toggleAuthForms(showRegister) {
+                    this.elements.registerForm.classList.toggle('hidden', !showRegister);
+                    this.elements.showLoginBtn.classList.toggle('hidden', !showRegister);
+                    this.elements.loginForm.classList.toggle('hidden', showRegister);
+                    this.elements.showRegisterBtn.classList.toggle('hidden', showRegister);
+                    this.elements.authMessage.textContent = '';
+                    this.elements.authView.querySelector('h2').textContent = showRegister ? 'Create a new account' : 'Sign in to your account';
+                },
+
+                async handleLogin(email, password) {
+                    try {
+                        await signInWithEmailAndPassword(this.state.auth, email, password);
+                        // onAuthStateChanged listener will handle navigation to 'browse'
+                    } catch (error) {
+                        console.error("Login error:", error);
+                        this.elements.authMessage.textContent = `Login failed: ${error.message}`;
+                    }
+                },
+                
+                async handleRegister(email, password) {
+                    try {
+                        await createUserWithEmailAndPassword(this.state.auth, email, password);
+                        this.elements.authMessage.textContent = 'Registration successful! Please sign in.';
+                        this.toggleAuthForms(false);
+                    } catch (error) {
+                        console.error("Registration error:", error);
+                        this.elements.authMessage.textContent = `Registration failed: ${error.message}`;
+                    }
+                },
+
+                async handleSignOut() {
+                    try {
+                        await signOut(this.state.auth);
+                        // onAuthStateChanged listener will handle navigation to 'auth'
+                        this.showToast("You have been signed out.");
+                    } catch (error) {
+                        console.error("Sign out error:", error);
+                        this.showToast(`Sign out failed: ${error.message}`);
+                    }
+                },
+
+                renderBrowseView() {
+                    if (!this.state.db || !this.state.currentUser) return; // Ensure Firebase is ready
+
+                    const searchTerm = this.elements.searchInput.value.toLowerCase();
+                    const category = this.elements.categoryFilter.value;
+                    let filteredItems = this.state.items.filter(item => item.status === 'Available');
+
+                    if (searchTerm) {
+                        filteredItems = filteredItems.filter(item => 
+                            item.description.toLowerCase().includes(searchTerm) ||
+                            item.location.toLowerCase().includes(searchTerm)
+                        );
+                    }
+                    if (category !== 'All') {
+                        filteredItems = filteredItems.filter(item => item.category === category);
+                    }
+
+                    this.elements.itemsGrid.innerHTML = '';
+                    if (filteredItems.length === 0) {
+                        this.elements.noItemsMessage.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    this.elements.noItemsMessage.classList.add('hidden');
+                    filteredItems.forEach(item => {
+                        const card = document.createElement('div');
+                        card.className = 'bg-white rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 cursor-pointer overflow-hidden group';
+                        card.innerHTML = `
+                            <div class="relative">
+                                <img src="${item.imageUrl}" alt="${item.description}" class="w-full h-48 object-cover">
+                                <div class="absolute top-2 right-2 bg-teal-600 text-white text-xs font-bold px-2 py-1 rounded-full">${item.category}</div>
+                            </div>
+                            <div class="p-4">
+                                <h3 class="font-semibold text-lg text-stone-800 truncate">${item.description}</h3>
+                                <p class="text-sm text-stone-500 mt-1">${item.location}</p>
+                                <p class="text-sm text-stone-500">Posted by: ${item.userEmail || item.userId}</p>
+                            </div>
+                        `;
+                        card.addEventListener('click', () => this.renderItemDetails(item.id));
+                        this.elements.itemsGrid.appendChild(card);
+                    });
+                },
+
+                async renderItemDetails(itemId) {
+                    if (!this.state.db || !this.state.currentUser) return;
+
+                    const item = this.state.items.find(i => i.id === itemId);
+                    if (!item) {
+                        this.showToast('Item not found.');
+                        this.navigate('browse');
+                        return;
+                    }
+                    
+                    // Fetch the user's email if available (Firebase Auth doesn't provide email for all users directly on document)
+                    // For simplicity, we'll assume item.userEmail is set on creation. If not, fallback to UID.
+                    const giverDisplayName = item.userEmail || item.userId;
+
+                    let offerSection = '';
+                    const isOwnItem = this.state.currentUser.uid === item.userId;
+                    const canMakeOffer = !isOwnItem && item.status === 'Available';
+
+                    if (canMakeOffer) {
+                        offerSection = `
+                            <div class="mt-6 p-4 bg-teal-50 rounded-lg border border-teal-200">
+                                <h3 class="text-xl font-semibold text-teal-800 mb-3">Make an Offer</h3>
+                                <textarea id="offer-message-input" class="w-full p-3 border border-teal-300 rounded-md focus:outline-none focus:ring-teal-500" rows="3" placeholder="Type your message here..."></textarea>
+                                <button id="submit-offer-button" class="mt-3 w-full py-2 px-4 bg-teal-600 text-white font-semibold rounded-md shadow-md hover:bg-teal-700">Submit Offer</button>
+                            </div>
+                        `;
+                    } else if (isOwnItem) {
+                        offerSection = `<div class="mt-6 p-4 bg-stone-100 rounded-lg text-stone-700 font-semibold text-center">This is your item.</div>`;
+                    } else {
+                        offerSection = `<div class="mt-6 p-4 bg-rose-100 rounded-lg text-rose-700 font-semibold text-center">This item is currently ${item.status.toLowerCase()}.</div>`;
+                    }
+
+                    this.elements.itemDetailContent.innerHTML = `
+                        <div class="lg:w-1/2 flex-shrink-0">
+                            <img src="${item.imageUrl}" alt="${item.description}" class="w-full h-auto object-cover rounded-lg shadow-md">
+                        </div>
+                        <div class="lg:w-1/2">
+                            <span class="inline-block bg-teal-100 text-teal-800 text-xs font-medium px-2.5 py-0.5 rounded-full">${item.category}</span>
+                            <h2 class="text-3xl font-bold text-stone-900 mt-2">${item.description}</h2>
+                            <p class="mt-4 text-lg text-stone-700">Location: <span class="font-semibold">${item.location}</span></p>
+                            <p class="text-lg text-stone-700">Condition: <span class="font-semibold">${item.condition || 'N/A'}</span></p>
+                            <p class="text-lg text-stone-700 mb-4">Status: <span class="font-bold ${item.status === 'Available' ? 'text-green-600' : 'text-orange-500'}">${item.status}</span></p>
+                            <p class="text-sm text-stone-500">Posted by: ${giverDisplayName}</p>
+                            ${offerSection}
+                        </div>
+                    `;
+                    this.navigate('item-details');
+                    
+                    if(canMakeOffer) {
+                        document.getElementById('submit-offer-button').addEventListener('click', async () => {
+                            const message = document.getElementById('offer-message-input').value;
+                            await this.handleMakeOffer(itemId, message);
+                        });
+                    }
+                },
+                
+                async handleMakeOffer(itemId, message) {
+                    if (!this.state.db || !this.state.currentUser) {
+                        this.showToast('Please sign in to make an offer.');
+                        return;
+                    }
+                    if (!message.trim()) {
+                        this.showToast('Please enter a message for your offer.');
+                        return;
+                    }
+
+                    try {
+                        const offersCollectionRef = collection(this.state.db, `artifacts/${this.state.appId}/public/data/items/${itemId}/offers`);
+                        await addDoc(offersCollectionRef, {
+                            offererId: this.state.currentUser.uid,
+                            offererEmail: this.state.currentUser.email, // Store email for display
+                            message: message,
+                            status: 'Pending',
+                            createdAt: serverTimestamp(),
+                        });
+                        this.showToast('Offer submitted successfully!');
+                        this.navigate('my-offers');
+                    } catch (error) {
+                        console.error("Error making offer:", error);
+                        this.showToast(`Error making offer: ${error.message}`);
+                    }
+                },
+                
+                async handlePostItem() {
+                    if (!this.state.db || !this.state.currentUser || !this.state.storage) {
+                        this.showToast('Firebase services not ready. Please try again.');
+                        return;
+                    }
+
+                    const description = document.getElementById('item-description').value;
+                    const imageFile = document.getElementById('item-image').files[0];
+                    const category = document.getElementById('item-category').value;
+                    const location = document.getElementById('item-location').value;
+                    const condition = document.getElementById('item-condition').value;
+                    
+                    if (!description || !category || !location) {
+                        this.showToast('Please fill in all required fields (Description, Category, Location).');
+                        return;
+                    }
+
+                    try {
+                        let imageUrl = '';
+                        if (imageFile) {
+                            const storageRef = ref(this.state.storage, `item_images/${this.state.currentUser.uid}/${imageFile.name}-${Date.now()}`);
+                            await uploadBytes(storageRef, imageFile);
+                            imageUrl = await getDownloadURL(storageRef);
+                        } else {
+                            imageUrl = 'https://placehold.co/600x400/cccccc/333333?text=No+Image'; // Placeholder if no image uploaded
+                        }
+
+                        const itemsCollectionRef = collection(this.state.db, `artifacts/${this.state.appId}/public/data/items`);
+                        await addDoc(itemsCollectionRef, {
+                            userId: this.state.currentUser.uid,
+                            userEmail: this.state.currentUser.email, // Store email of giver
+                            description,
+                            imageUrl,
+                            category,
+                            location,
+                            condition,
+                            status: 'Available',
+                            createdAt: serverTimestamp(),
+                        });
+                        
+                        this.elements.postItemForm.reset();
+                        this.showToast('Item posted successfully!');
+                        this.navigate('my-items');
+                    } catch (error) {
+                        console.error("Error posting item:", error);
+                        this.showToast(`Error posting item: ${error.message}`);
+                    }
+                },
+
+                async renderMyItemsView() {
+                    if (!this.state.db || !this.state.currentUser) return;
+
+                    const myItems = this.state.items.filter(item => item.userId === this.state.currentUser.uid);
+                    this.elements.myItemsList.innerHTML = '';
+                    
+                    if(myItems.length === 0) {
+                        this.elements.noMyItemsMessage.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    this.elements.noMyItemsMessage.classList.add('hidden');
+                    
+                    for (const item of myItems) {
+                        const offersCollectionRef = collection(this.state.db, `artifacts/${this.state.appId}/public/data/items/${item.id}/offers`);
+                        const offersSnapshot = await getDocs(offersCollectionRef);
+                        const offersForItem = offersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                        let offersHtml = '<h4 class="text-md font-semibold text-stone-700 mt-4 border-t pt-4">No offers yet.</h4>';
+                        if (offersForItem.length > 0) {
+                            offersHtml = `<h4 class="text-md font-semibold text-stone-700 mt-4 border-t pt-4 mb-2">Incoming Offers:</h4>` + offersForItem.map(offer => {
+                                let actionButtons = '';
+                                if (offer.status === 'Pending') {
+                                    actionButtons = `
+                                        <button data-offer-id="${offer.id}" data-action="accept" class="offer-action-btn bg-green-500 hover:bg-green-600 text-white text-xs font-bold py-1 px-2 rounded">Accept</button>
+                                        <button data-offer-id="${offer.id}" data-action="reject" class="offer-action-btn bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold py-1 px-2 rounded">Reject</button>
+                                    `;
+                                }
+                                return `
+                                    <div class="bg-stone-100 p-3 rounded-md mb-2">
+                                        <p class="text-sm text-stone-600">From: <span class="font-medium">${offer.offererEmail || offer.offererId}</span></p>
+                                        <p class="text-sm text-stone-800 italic my-1">"${offer.message}"</p>
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs font-bold text-stone-600">Status: ${offer.status}</span>
+                                            <div class="space-x-2">${actionButtons}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                        }
+
+                        const itemElement = document.createElement('div');
+                        itemElement.className = 'bg-white rounded-lg shadow-lg overflow-hidden';
+                        itemElement.innerHTML = `
+                            <div class="md:flex">
+                                <div class="md:flex-shrink-0">
+                                    <img class="h-48 w-full object-cover md:w-48" src="${item.imageUrl}" alt="${item.description}">
+                                </div>
+                                <div class="p-6 flex-grow">
+                                    <div class="flex justify-between items-start">
+                                        <div>
+                                            <div class="uppercase tracking-wide text-sm text-teal-600 font-semibold">${item.category}</div>
+                                            <p class="block mt-1 text-lg leading-tight font-medium text-black">${item.description}</p>
+                                            <p class="mt-2 text-stone-500">${item.location}</p>
+                                        </div>
+                                        <span class="text-sm font-bold ${item.status === 'Available' ? 'text-green-600' : 'text-orange-500'}">${item.status}</span>
+                                    </div>
+                                    <div class="mt-4">${offersHtml}</div>
+                                </div>
+                            </div>
+                        `;
+                        this.elements.myItemsList.appendChild(itemElement);
+                    }
+                    
+                    document.querySelectorAll('.offer-action-btn').forEach(btn => {
+                        btn.addEventListener('click', async e => {
+                           const offerId = e.target.dataset.offerId;
+                           const action = e.target.dataset.action;
+                           const itemRefId = e.target.closest('[data-item-id]') ? e.target.closest('[data-item-id]').dataset.itemId : item.id; // Correctly get item ID
+                           await this.handleOfferAction(item.id, offerId, action);
+                        });
+                    });
+                },
+                
+                async handleOfferAction(itemId, offerId, action) {
+                    if (!this.state.db || !this.state.currentUser) return;
+
+                    try {
+                        const offerRef = doc(this.state.db, `artifacts/${this.state.appId}/public/data/items/${itemId}/offers`, offerId);
+                        const itemRef = doc(this.state.db, `artifacts/${this.state.appId}/public/data/items`, itemId);
+                        
+                        if (action === 'accept') {
+                            await updateDoc(offerRef, { status: 'Accepted' });
+                            await updateDoc(itemRef, { status: 'Given Away' });
+
+                            // Reject all other pending offers for this item
+                            const offersCollectionRef = collection(this.state.db, `artifacts/${this.state.appId}/public/data/items/${itemId}/offers`);
+                            const otherOffersQuery = query(offersCollectionRef, where("status", "==", "Pending"), where(doc.id, "!=", offerId));
+                            const otherOffersSnapshot = await getDocs(otherOffersQuery);
+                            
+                            for (const otherOfferDoc of otherOffersSnapshot.docs) {
+                                await updateDoc(doc(this.state.db, `artifacts/${this.state.appId}/public/data/items/${itemId}/offers`, otherOfferDoc.id), { status: 'Rejected' });
+                            }
+                            
+                            this.showToast('Offer accepted and item marked as given away. Other pending offers rejected.');
+                        } else if (action === 'reject') {
+                            await updateDoc(offerRef, { status: 'Rejected' });
+                            this.showToast('Offer rejected.');
+                        }
+                        
+                        this.renderMyItemsView(); // Re-render to show updated statuses
+                    } catch (error) {
+                        console.error("Error updating offer status:", error);
+                        this.showToast(`Error updating offer status: ${error.message}`);
+                    }
+                },
+                
+                async renderMyOffersView() {
+                    if (!this.state.db || !this.state.currentUser) return;
+
+                    this.elements.myOffersList.innerHTML = '';
+                    let myOffers = [];
+                    
+                    try {
+                        const itemsRef = collection(this.state.db, `artifacts/${this.state.appId}/public/data/items`);
+                        const itemSnapshot = await getDocs(itemsRef);
+
+                        for (const itemDoc of itemSnapshot.docs) {
+                            const offersSubcollectionRef = collection(this.state.db, `artifacts/${this.state.appId}/public/data/items/${itemDoc.id}/offers`);
+                            const offersQuery = query(offersSubcollectionRef, where("offererId", "==", this.state.currentUser.uid));
+                            const offersSnapshot = await getDocs(offersQuery);
+
+                            offersSnapshot.docs.forEach(offerDoc => {
+                                myOffers.push({
+                                    id: offerDoc.id,
+                                    itemId: itemDoc.id,
+                                    itemDescription: itemDoc.data().description,
+                                    itemImageUrl: itemDoc.data().imageUrl,
+                                    itemGiverId: itemDoc.data().userId,
+                                    ...offerDoc.data()
+                                });
+                            });
+                        }
+                        // Sort offers by creation date, newest first
+                        myOffers.sort((a, b) => (b.createdAt?.toDate() || 0) - (a.createdAt?.toDate() || 0));
+
+                    } catch (error) {
+                        console.error("Error fetching my offers:", error);
+                        this.showToast(`Error fetching your offers: ${error.message}`);
+                    }
+                    
+                    if (myOffers.length === 0) {
+                        this.elements.noMyOffersMessage.classList.remove('hidden');
+                        return;
+                    }
+                    
+                    this.elements.noMyOffersMessage.classList.add('hidden');
+                    
+                    myOffers.forEach(offer => {
+                        const offerElement = document.createElement('div');
+                        offerElement.className = 'bg-white p-4 rounded-lg shadow-md flex items-center justify-between';
+                        
+                        let statusColor = 'text-stone-600';
+                        if (offer.status === 'Accepted') statusColor = 'text-green-600';
+                        if (offer.status === 'Rejected') statusColor = 'text-rose-600';
+                        if (offer.status === 'Pending') statusColor = 'text-blue-600';
+
+
+                        offerElement.innerHTML = `
+                            <div class="flex items-center space-x-4">
+                                <img src="${offer.itemImageUrl}" alt="${offer.itemDescription}" class="w-16 h-16 object-cover rounded-md flex-shrink-0">
+                                <div>
+                                    <p class="font-semibold text-stone-800">Offer for: ${offer.itemDescription}</p>
+                                    <p class="text-sm text-stone-600 italic">Your message: "${offer.message}"</p>
+                                </div>
+                            </div>
+                            <span class="text-sm font-bold ${statusColor}">${offer.status}</span>
+                        `;
+                        this.elements.myOffersList.appendChild(offerElement);
+                    });
+                },
+
+                renderDashboard() {
+                    if (!this.state.db || !this.state.currentUser) return;
+
+                    const categories = [...new Set(this.state.items.map(item => item.category))];
+                    const counts = categories.map(cat => this.state.items.filter(item => item.category === cat).length);
+                    
+                    const chartData = {
+                        labels: categories,
+                        datasets: [{
+                            label: 'Items by Category',
+                            data: counts,
+                            backgroundColor: [
+                                'rgba(13, 148, 136, 0.7)', // Teal
+                                'rgba(8, 145, 178, 0.7)',  // Cyan
+                                'rgba(219, 39, 119, 0.7)', // Pink
+                                'rgba(217, 119, 6, 0.7)',  // Orange
+                                'rgba(124, 58, 237, 0.7)', // Purple
+                                'rgba(107, 114, 128, 0.7)',// Gray
+                                'rgba(234, 179, 8, 0.7)'   // Amber for Household
+                            ],
+                            borderColor: [
+                                'rgb(13, 148, 136)',
+                                'rgb(8, 145, 178)',
+                                'rgb(219, 39, 119)',
+                                'rgb(217, 119, 6)',
+                                'rgb(124, 58, 237)',
+                                'rgb(107, 114, 128)',
+                                'rgb(234, 179, 8)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    };
+
+                    if(window.itemsChartInstance) {
+                        window.itemsChartInstance.destroy();
+                    }
+                    
+                    window.itemsChartInstance = new Chart(this.elements.itemsChartCanvas, {
+                        type: 'doughnut',
+                        data: chartData,
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    position: 'top',
+                                    labels: {
+                                        // Custom label wrapping for long category names
+                                        generateLabels: (chart) => {
+                                            const data = chart.data;
+                                            if (data.labels.length && data.datasets.length) {
+                                                return data.labels.map((label, i) => {
+                                                    const meta = chart.getDatasetMeta(0);
+                                                    const style = meta.data[i].options.backgroundColor;
+                                                    
+                                                    // Wrap label if it's too long (e.g., > 16 chars)
+                                                    const wrappedLabel = label.length > 16 ? label.match(/.{1,8}/g).join('\n') : label;
+
+                                                    return {
+                                                        text: wrappedLabel,
+                                                        fillStyle: style,
+                                                        strokeStyle: data.datasets[0].borderColor[i],
+                                                        lineWidth: data.datasets[0].borderWidth,
+                                                        hidden: !chart.isDatasetVisible(0) || data.datasets[0].data[i] === 0, // Fix: Removed extra tab character
+                                                        index: i
+                                                    };
+                                                });
+                                            }
+                                            return [];
+                                        }
+                                    }
+                                },
+                                tooltip: { // Required tooltip config
+                                    callbacks: {
+                                        label: function(context) {
+                                            let label = context.label || '';
+                                            if (label) {
+                                                label += ': ';
+                                            }
+                                            if (context.parsed !== null) {
+                                                label += context.parsed;
+                                            }
+                                            return label;
+                                        }
+                                    }
+                                },
+                                title: {
+                                    display: false,
+                                    text: 'Items by Category'
+                                }
+                            }
+                        }
+                    });
+                }
+            };
+            
+            app.init();
+        });
+    </script>
+</body>
+</html>
