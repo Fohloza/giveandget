@@ -15,6 +15,6 @@ jobs:
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GIVEANDGETAPP_D4E0D }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_GIVEANDGETAPP }}
           channelId: live
-          projectId: GIVEANDGET_D4E0D
+          projectId: GIVEANDGET
