@@ -17,4 +17,4 @@ jobs:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_giveandget}}
           channelId: live
-          projectId: giveandget
+          projectId: giveandgetapp-d4e0d
